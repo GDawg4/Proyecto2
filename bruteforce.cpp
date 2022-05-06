@@ -33,6 +33,8 @@ using CryptoPP::CBC_Mode;
 #include "cryptopp/secblock.h"
 using CryptoPP::SecByteBlock;
 
+#include <mpi.h>
+
 string decode(CBC_Mode< DES >::Decryption decryptor, string cipher, CryptoPP::byte key[DES::KEYLENGTH], CryptoPP::byte iv[DES::BLOCKSIZE]){
 	string recovered;
 	decryptor.SetKeyWithIV(key, 8, iv);
@@ -57,7 +59,7 @@ int main(int argc, char* argv[])
 
 	CryptoPP::byte iv[DES::BLOCKSIZE] = {0};
 	// prng.GenerateBlock(iv, sizeof(iv));
-	CryptoPP::byte key2[DES::KEYLENGTH] = {0, 0, 0, 0, 255, 255, 255, 255};
+	CryptoPP::byte key2[DES::KEYLENGTH] = {250, 255, 255, 255, 255, 255, 255, 223};
 
 	string plain = "Este es la cadena de prueba, esperemos encontrar un resultado apropiado";
 	string cipher, encoded, recovered;
@@ -75,14 +77,14 @@ int main(int argc, char* argv[])
 			new StringSink(encoded)
 		) // HexEncoder
 	); // StringSource
-	cout << "key: " << encoded << endl;
+	// cout << "key: " << encoded << endl;
 
 	/*********************************\
 	\*********************************/
 
 	try
 	{
-		cout << "plain text: " << plain << endl;
+		// cout << "plain text: " << plain << endl;
 
 		CBC_Mode< DES >::Encryption e;
 		e.SetKeyWithIV(key2, 8, iv);
@@ -112,62 +114,61 @@ int main(int argc, char* argv[])
 			new StringSink(encoded)
 		) // HexEncoder
 	); // StringSource
-	cout << "cipher text: " << encoded << endl;
+	// cout << "cipher text: " << encoded << endl;
 
 	/*********************************\
 	\*********************************/
 
 	try
 	{
-		key2[0] = (CryptoPP::byte)0;
-		key2[1] = (CryptoPP::byte)0;
-		key2[2] = (CryptoPP::byte)0;
-		key2[3] = (CryptoPP::byte)0;
-		key2[4] = (CryptoPP::byte)0;
-		key2[5] = (CryptoPP::byte)0;
-		key2[6] = (CryptoPP::byte)0;
-		key2[7] = (CryptoPP::byte)0;
+		unsigned char cipherSom[] = {108, 245, 65, 63, 125, 200, 150, 66, 17, 170, 207, 170, 34, 31, 70, 215, 0};
+		int N, id;
+		unsigned long long int upper = (unsigned long long int)(pow(2, 64)); //upper bound DES keys 2^56
+		unsigned long long int mylower, myupper;
+		MPI_Status st;
+		MPI_Request req;
+		int flag;
+		int ciphlen = *(&cipherSom + 1) - cipherSom;
+		MPI_Comm comm = MPI_COMM_WORLD;
+		MPI_Init(NULL, NULL);
+		MPI_Comm_size(comm, &N);
+		MPI_Comm_rank(comm, &id);
+		long int range_per_node = upper / N;
+  		mylower = range_per_node * id;
+  		myupper = range_per_node * (id+1) -1;
+  		if(id == N-1){
+    	//compensar residuo
+    		myupper = upper;
+  		}
+
+  		long found = 0;
+
+  		MPI_Irecv(&found, 1, MPI_LONG, MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &req);
+		// cout << " Something: " << id << " lower: " << mylower << " upper: " << myupper << ";";
+
 		CBC_Mode< DES >::Decryption d;
-		for(int i0 = 0; i0 < 255; i0++){
-			key2[0] = (CryptoPP::byte)i0;
-			for(int i1 = 0; i1 < 255; i1++){
-				key2[1] = (CryptoPP::byte)i1;
-				for(int i2 = 0; i2 < 255; i2++){
-					key2[2] = (CryptoPP::byte)i2;
-					for(int i3 = 0; i3 < 255; i3++){
-						key2[3] = (CryptoPP::byte)i3;
-						for(int i4 = 0; i4 < 255; i4++){
-							key2[4] = (CryptoPP::byte)i4;
-							for(int i5 = 0; i5 < 255; i5++){
-								key2[5] = (CryptoPP::byte)i5;
-								for(int i6 = 0; i6 < 255; i6++){
-									key2[6] = (CryptoPP::byte)i6;
-									for(int i7 = 0; i7 < 255; i7++){
-										key2[7] = (CryptoPP::byte)i7;
-										// cout << "Checking " << (int)key2[0] << (int)key2[1] << (int)key2[2] << (int)key2[3] << (int)key2[4] << (int)key2[5] << (int)key2[6] << (int)key2[7] << "\n";
-										if (check_key(d, cipher, key2, iv)){
-											cout << "Found \n";
-											return 0;
-										}
-									}
-								}
-							}
-						}
-					}
+		//long int x = 4294967296;
+		unsigned long long int x = 0;
+		unsigned char arrayOfByte[8];
+		memcpy(arrayOfByte, &mylower, 8);
+		cout << "Checking " << id << " " << (int)arrayOfByte[0] << (int)arrayOfByte[1] << (int)arrayOfByte[2] << (int)arrayOfByte[3] << (int)arrayOfByte[4] << (int)arrayOfByte[5] << (int)arrayOfByte[6] << (int)arrayOfByte[7] << "\n";		
+		for(unsigned long long int i = mylower; i < myupper && (found==0); ++i){
+			memcpy(arrayOfByte, &i, 8);
+			// cout << "Checking inner " << id << " " << (int)arrayOfByte[0] << (int)arrayOfByte[1] << (int)arrayOfByte[2] << (int)arrayOfByte[3] << (int)arrayOfByte[4] << (int)arrayOfByte[5] << (int)arrayOfByte[6] << (int)arrayOfByte[7] << "\n";
+			if(check_key(d, cipher, arrayOfByte, iv)){
+				found = 15;
+				cout << "Found " << id << "\n";
+				cout << "Checking " << id << " " << (int)arrayOfByte[0] << (int)arrayOfByte[1] << (int)arrayOfByte[2] << (int)arrayOfByte[3] << (int)arrayOfByte[4] << (int)arrayOfByte[5] << (int)arrayOfByte[6] << (int)arrayOfByte[7] << "\n";
+				for(int node=0; node<N; node++){
+					MPI_Send(&found, 1, MPI_LONG, node, 0, MPI_COMM_WORLD);
 				}
+     			break;
 			}
 		}
-		// d.SetKeyWithIV(key2, 8, iv);
-
-		// The StreamTransformationFilter removes
-		//  padding as required.
-		// StringSource s(cipher, true, 
-		// 	new StreamTransformationFilter(d,
-		// 		new StringSink(recovered)
-		// 	) // StreamTransformationFilter
-		// ); // StringSource
-
-		// cout << "recovered text: " << recovered << endl;
+		// cout << "Checking " << (int)arrayOfByte[0] << (int)arrayOfByte[1] << (int)arrayOfByte[2] << (int)arrayOfByte[3] << (int)arrayOfByte[4] << (int)arrayOfByte[5] << (int)arrayOfByte[6] << (int)arrayOfByte[7] << "\n";
+		// cout << "Found \n";
+		MPI_Finalize();
+		return 0;
 	}
 	catch(const CryptoPP::Exception& e)
 	{

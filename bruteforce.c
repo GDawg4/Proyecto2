@@ -11,6 +11,7 @@
 void decrypt(long key, char *ciph, int len){
   //set parity of key and do decrypt
   long k = 0;
+  // k << = 3 <=> k *= 2^3
   for(int i=0; i<8; ++i){
     key <<= 1;
     k += (key & (0xFE << i*8));
@@ -31,7 +32,7 @@ void encrypt(long key, char *ciph, int len){
 }
 
 char search[] = " the ";
-int tryKey(long key, char *ciph, int len){
+int rettryKey(long key, char *ciph, int len){
   char temp[len+1];
   memcpy(temp, ciph, len);
   temp[len]=0;
