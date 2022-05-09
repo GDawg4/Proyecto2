@@ -63,7 +63,7 @@ int main(int argc, char* argv[])
 
 	CryptoPP::byte iv[DES::BLOCKSIZE] = {0};
 	// prng.GenerateBlock(iv, sizeof(iv));
-	CryptoPP::byte key2[DES::KEYLENGTH] = {250, 0, 0, 0, 0, 0, 0, 0};
+	CryptoPP::byte key2[DES::KEYLENGTH] = {0, 0, 32, 0, 0, 0, 0, 0};
 
 	string plain = "Este es la cadena de prueba, esperemos encontrar un resultado apropiado";
 	string cipher, encoded, recovered;
@@ -135,7 +135,7 @@ int main(int argc, char* argv[])
 			new StringSink(encoded)
 		) // HexEncoder
 	); // StringSource
-
+	cout << cipher << endl;
 	string testString;
 	StringSource(cipherText, true, new HexDecoder(new StringSink(testString)));
 
@@ -171,6 +171,9 @@ int main(int argc, char* argv[])
   		MPI_Irecv(&found, 1, MPI_LONG, MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &req);
 		// cout << " Something: " << id << " lower: " << mylower << " upper: " << myupper << ";";
 
+		double startTime, endTime;
+		startTime = MPI_Wtime();
+
 		CBC_Mode< DES >::Decryption d;
 		//long int x = 4294967296;
 		unsigned long long int x = 0;
@@ -180,9 +183,11 @@ int main(int argc, char* argv[])
 		for(unsigned long long int i = mylower; i < myupper && (found==0); ++i){
 			memcpy(arrayOfByte, &i, 8);
 			// cout << "Checking inner " << id << " " << (int)arrayOfByte[0] << (int)arrayOfByte[1] << (int)arrayOfByte[2] << (int)arrayOfByte[3] << (int)arrayOfByte[4] << (int)arrayOfByte[5] << (int)arrayOfByte[6] << (int)arrayOfByte[7] << "\n";
-			if(check_key(d, testString, arrayOfByte, iv)){
+			if(check_key(d, cipher, arrayOfByte, iv)){
 				found = 15;
 				cout << "Found " << id << " " << found << endl;
+				endTime = MPI_Wtime();
+				cout << "Took " << endTime-startTime << "seconds " << endl;
 				// cout << "Checking " << id << " " << (int)arrayOfByte[0] << (int)arrayOfByte[1] << (int)arrayOfByte[2] << (int)arrayOfByte[3] << (int)arrayOfByte[4] << (int)arrayOfByte[5] << (int)arrayOfByte[6] << (int)arrayOfByte[7] << "\n";
 				cout << "Node " << N << endl;
 				for(int node=0; node<N; node++){
