@@ -1,6 +1,7 @@
 #include "cryptopp/osrng.h"
 using CryptoPP::AutoSeededRandomPool;
 
+using namespace std;
 #include <iostream>
 using std::cout;
 using std::cerr;
@@ -35,6 +36,9 @@ using CryptoPP::SecByteBlock;
 
 #include <mpi.h>
 
+#include <fstream>
+using std::ifstream;
+
 string decode(CBC_Mode< DES >::Decryption decryptor, string cipher, CryptoPP::byte key[DES::KEYLENGTH], CryptoPP::byte iv[DES::BLOCKSIZE]){
 	string recovered;
 	decryptor.SetKeyWithIV(key, 8, iv);
@@ -59,10 +63,27 @@ int main(int argc, char* argv[])
 
 	CryptoPP::byte iv[DES::BLOCKSIZE] = {0};
 	// prng.GenerateBlock(iv, sizeof(iv));
-	CryptoPP::byte key2[DES::KEYLENGTH] = {250, 255, 255, 255, 255, 255, 255, 223};
+	CryptoPP::byte key2[DES::KEYLENGTH] = {254, 255, 255, 255, 255, 255, 255, 191};
 
 	string plain = "Este es la cadena de prueba, esperemos encontrar un resultado apropiado";
 	string cipher, encoded, recovered;
+
+	string line;
+	ifstream myfile ("test2.txt");
+	string cipherText;
+	if (myfile.is_open())
+	{
+		while ( getline (myfile,line) )
+		{
+			cout << line.length() << '\n';
+			cipherText = line;
+		}
+		myfile.close();
+	}
+	else
+	{
+		cout << "Unable to open file";
+	} 
 
 	/*********************************\
 	\*********************************/
@@ -114,13 +135,17 @@ int main(int argc, char* argv[])
 			new StringSink(encoded)
 		) // HexEncoder
 	); // StringSource
-	// cout << "cipher text: " << encoded << endl;
+	cout << cipher << endl;
+	string testString;
+	StringSource(cipherText, true, new HexDecoder(new StringSink(testString)));
 
 	/*********************************\
 	\*********************************/
 
 	try
 	{
+		//Leer del archivo
+		//Se inicializa MPI
 		unsigned char cipherSom[] = {108, 245, 65, 63, 125, 200, 150, 66, 17, 170, 207, 170, 34, 31, 70, 215, 0};
 		int N, id;
 		unsigned long long int upper = (unsigned long long int)(pow(2, 64)); //upper bound DES keys 2^56
@@ -146,6 +171,9 @@ int main(int argc, char* argv[])
   		MPI_Irecv(&found, 1, MPI_LONG, MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &req);
 		// cout << " Something: " << id << " lower: " << mylower << " upper: " << myupper << ";";
 
+		double startTime, endTime;
+		startTime = MPI_Wtime();
+
 		CBC_Mode< DES >::Decryption d;
 		//long int x = 4294967296;
 		unsigned long long int x = 0;
@@ -155,13 +183,18 @@ int main(int argc, char* argv[])
 		for(unsigned long long int i = mylower; i < myupper && (found==0); ++i){
 			memcpy(arrayOfByte, &i, 8);
 			// cout << "Checking inner " << id << " " << (int)arrayOfByte[0] << (int)arrayOfByte[1] << (int)arrayOfByte[2] << (int)arrayOfByte[3] << (int)arrayOfByte[4] << (int)arrayOfByte[5] << (int)arrayOfByte[6] << (int)arrayOfByte[7] << "\n";
-			if(check_key(d, cipher, arrayOfByte, iv)){
+			if(check_key(d, testString, arrayOfByte, iv)){
 				found = 15;
-				cout << "Found " << id << "\n";
-				cout << "Checking " << id << " " << (int)arrayOfByte[0] << (int)arrayOfByte[1] << (int)arrayOfByte[2] << (int)arrayOfByte[3] << (int)arrayOfByte[4] << (int)arrayOfByte[5] << (int)arrayOfByte[6] << (int)arrayOfByte[7] << "\n";
+				cout << "Found " << id << " " << (int)arrayOfByte[0] << (int)arrayOfByte[1] << (int)arrayOfByte[2] << (int)arrayOfByte[3] << (int)arrayOfByte[4] << (int)arrayOfByte[5] << (int)arrayOfByte[6] << (int)arrayOfByte[7] << endl;
+				endTime = MPI_Wtime();
+				cout << "Took " << endTime-startTime << "seconds " << endl;
+				// cout << "Checking " << id << " " << (int)arrayOfByte[0] << (int)arrayOfByte[1] << (int)arrayOfByte[2] << (int)arrayOfByte[3] << (int)arrayOfByte[4] << (int)arrayOfByte[5] << (int)arrayOfByte[6] << (int)arrayOfByte[7] << "\n";
+				cout << "Node " << N << endl;
 				for(int node=0; node<N; node++){
+					cout << "Sent"; 
 					MPI_Send(&found, 1, MPI_LONG, node, 0, MPI_COMM_WORLD);
 				}
+				cout << "Sent" << endl; 
      			break;
 			}
 		}
