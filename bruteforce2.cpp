@@ -63,7 +63,7 @@ int main(int argc, char* argv[]) {
 
 	CryptoPP::byte iv[DES::BLOCKSIZE] = {0};
 	// prng.GenerateBlock(iv, sizeof(iv));
-	CryptoPP::byte key2[DES::KEYLENGTH] = {250, 255, 255, 255, 255, 255, 255, 223};
+	CryptoPP::byte key2[DES::KEYLENGTH] = {1, 0, 0, 0, 0, 0, 0, 0};
 
 	string plain = "Este es la cadena de prueba, esperemos encontrar un resultado apropiado";
 	string cipher, encoded, recovered;
@@ -127,7 +127,7 @@ int main(int argc, char* argv[]) {
 	{
 		unsigned char cipherSom[] = {108, 245, 65, 63, 125, 200, 150, 66, 17, 170, 207, 170, 34, 31, 70, 215, 0};
 		int N, id;
-		uint64_t upper = (uint64_t)(pow(2, 56)); //upper bound DES keys 2^56
+		uint64_t upper = (uint64_t)(pow(2, 64)); //upper bound DES keys 2^56
 		uint64_t mylower, myupper;
 		MPI_Status st;
 		MPI_Request req;
@@ -150,6 +150,9 @@ int main(int argc, char* argv[]) {
   		MPI_Irecv(&found, 1, MPI_LONG, MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &req);
 		// cout << " Something: " << id << " lower: " << mylower << " upper: " << myupper << ";";
 
+		double startTime, endTime;
+		startTime = MPI_Wtime();
+
 		CBC_Mode< DES >::Decryption d;
 		//long int x = 4294967296;
 		uint64_t x = 0;
@@ -160,6 +163,7 @@ int main(int argc, char* argv[]) {
 		bool is_key = false;
 		std::default_random_engine generator;
 		std::uniform_int_distribution<uint64_t> distribution(mylower, myupper);
+		cout << "Searching randomly from " << mylower << " to " << myupper << "\n";
 
 		while (!is_key) {
 			uint64_t rand_i = distribution(generator);  // generates number in the range mylower..myupper
@@ -170,6 +174,11 @@ int main(int argc, char* argv[]) {
 				found = 15;
 				cout << "Found " << id << "\n";
 				cout << "Checking " << id << " " << (int)arrayOfByte[0] << (int)arrayOfByte[1] << (int)arrayOfByte[2] << (int)arrayOfByte[3] << (int)arrayOfByte[4] << (int)arrayOfByte[5] << (int)arrayOfByte[6] << (int)arrayOfByte[7] << "\n";
+
+				// measure time
+				endTime = MPI_Wtime();
+				cout << "Took " << endTime-startTime << "seconds " << endl;
+
 				for(int node=0; node<N; node++){
 					MPI_Send(&found, 1, MPI_LONG, node, 0, MPI_COMM_WORLD);
 				}
