@@ -40,6 +40,7 @@ using CryptoPP::SecByteBlock;
 
 #include <mpi.h>
 
+//Función que utiliza la funciones de la librería CryptoPP para probar una llave
 string decode(CBC_Mode< DES >::Decryption decryptor, string cipher, CryptoPP::byte key[DES::KEYLENGTH], CryptoPP::byte iv[DES::BLOCKSIZE]){
 	string recovered;
 	decryptor.SetKeyWithIV(key, 8, iv);
@@ -51,6 +52,7 @@ string decode(CBC_Mode< DES >::Decryption decryptor, string cipher, CryptoPP::by
 	return recovered;
 }
 
+//Función que revisa una llave y devuelve si fue exitosamente encontrada
 bool check_key(CBC_Mode< DES >::Decryption decryptor, string cipher, CryptoPP::byte key[DES::KEYLENGTH], CryptoPP::byte iv[DES::BLOCKSIZE]){
 	return decode(decryptor, cipher, key, iv).find("esperemos") != std::string::npos;	
 }
@@ -68,28 +70,15 @@ int main(int argc, char* argv[]) {
 	string plain = "Este es la cadena de prueba, esperemos encontrar un resultado apropiado";
 	string cipher, encoded, recovered;
 
-	/*********************************\
-	\*********************************/
-
-    // cout << "key length: " << DES::DEFAULT_KEYLENGTH << endl;
-    // cout << "block size: " << DES::BLOCKSIZE << endl;
-
-	// Pretty print key
 	encoded.clear();
 	StringSource(key2, 8, true,
 		new HexEncoder(
 			new StringSink(encoded)
 		) // HexEncoder
 	); // StringSource
-	// cout << "key: " << encoded << endl;
-
-	/*********************************\
-	\*********************************/
 
 	try
 	{
-		// cout << "plain text: " << plain << endl;
-
 		CBC_Mode< DES >::Encryption e;
 		e.SetKeyWithIV(key2, 8, iv);
 
@@ -108,23 +97,17 @@ int main(int argc, char* argv[]) {
 		exit(1);
 	}
 
-	/*********************************\
-	\*********************************/
-
-	// Pretty print
 	encoded.clear();
 	StringSource(cipher, true,
 		new HexEncoder(
 			new StringSink(encoded)
 		) // HexEncoder
 	); // StringSource
-	// cout << "cipher text: " << encoded << endl;
 
-	/*********************************\
-	\*********************************/
 
 	try
 	{
+		//Se inicializa MPI
 		unsigned char cipherSom[] = {108, 245, 65, 63, 125, 200, 150, 66, 17, 170, 207, 170, 34, 31, 70, 215, 0};
 		int N, id;
 		uint64_t upper = (uint64_t)(pow(2, 64)); //upper bound DES keys 2^56
@@ -137,6 +120,7 @@ int main(int argc, char* argv[]) {
 		MPI_Init(NULL, NULL);
 		MPI_Comm_size(comm, &N);
 		MPI_Comm_rank(comm, &id);
+		//Se obtiene el limite superior e inferior segun el id del proceso
 		long int range_per_node = upper / N;
   		mylower = range_per_node * id;
   		myupper = range_per_node * (id+1) -1;
@@ -148,13 +132,11 @@ int main(int argc, char* argv[]) {
   		long found = 0;
 
   		MPI_Irecv(&found, 1, MPI_LONG, MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &req);
-		// cout << " Something: " << id << " lower: " << mylower << " upper: " << myupper << ";";
 
 		double startTime, endTime;
 		startTime = MPI_Wtime();
 
 		CBC_Mode< DES >::Decryption d;
-		//long int x = 4294967296;
 		uint64_t x = 0;
 		unsigned char arrayOfByte[8];
 		memcpy(arrayOfByte, &mylower, 8);
@@ -165,11 +147,13 @@ int main(int argc, char* argv[]) {
 		std::uniform_int_distribution<uint64_t> distribution(mylower, myupper);
 		cout << "Searching randomly from " << mylower << " to " << myupper << "\n";
 
+		//Mientras no se encuentre la llave
 		while (!is_key) {
 			uint64_t rand_i = distribution(generator);  // generates number in the range mylower..myupper
 			memcpy(arrayOfByte, &rand_i, 8);
 			is_key = check_key(d, cipher, arrayOfByte, iv);
 
+			//Si encontro la llave imprimir la llave, el tiempo que se tardo y el nodo que lo encontro 
 			if (is_key) {
 				found = 15;
 				cout << "Found " << id << "\n";
@@ -197,9 +181,6 @@ int main(int argc, char* argv[]) {
 		cerr << e.what() << endl;
 		exit(1);
 	}
-
-	/*********************************\
-	\*********************************/
 
 	return 0;
 }
