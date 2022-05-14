@@ -64,13 +64,14 @@ int main(int argc, char* argv[])
 	prng.GenerateBlock(key, 8);
 
 	CryptoPP::byte iv[DES::BLOCKSIZE] = {0};
-	CryptoPP::byte key2[DES::KEYLENGTH] = {254, 255, 255, 255, 255, 255, 255, 191};
+	// prng.GenerateBlock(iv, sizeof(iv));
+	CryptoPP::byte key2[DES::KEYLENGTH] = {128, 128, 128, 2, 0, 0, 0, 0};
 
 	string plain = "Este es la cadena de prueba, esperemos encontrar un resultado apropiado";
 	string cipher, encoded, recovered;
 
 	string line;
-	ifstream myfile ("test2.txt");
+	ifstream myfile ("cipher_text-1.txt");
 	string cipherText;
 	if (myfile.is_open())
 	{
@@ -119,6 +120,8 @@ int main(int argc, char* argv[])
 			new StringSink(encoded)
 		) // HexEncoder
 	); // StringSource
+	cout << cipher << endl;
+	cout << encoded << endl;
 	string testString;
 	StringSource(cipherText, true, new HexDecoder(new StringSink(testString)));
 
@@ -149,6 +152,7 @@ int main(int argc, char* argv[])
   		long found = 0;
 
   		MPI_Irecv(&found, 1, MPI_LONG, MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &req);
+		// cout << " ID: " << id << " lower: " << mylower << " upper: " << myupper << endl;
 
 		double startTime, endTime;
 		startTime = MPI_Wtime();
@@ -157,20 +161,27 @@ int main(int argc, char* argv[])
 		unsigned long long int x = 0;
 		unsigned char arrayOfByte[8];
 		memcpy(arrayOfByte, &mylower, 8);
-		cout << "Checking " << id << " " << (int)arrayOfByte[0] << (int)arrayOfByte[1] << (int)arrayOfByte[2] << (int)arrayOfByte[3] << (int)arrayOfByte[4] << (int)arrayOfByte[5] << (int)arrayOfByte[6] << (int)arrayOfByte[7] << "\n";		
+		// cout << "Checking " << id << " " << (int)arrayOfByte[0] << " " << (int)arrayOfByte[1] << " " << (int)arrayOfByte[2] << " " << (int)arrayOfByte[3] << " " << (int)arrayOfByte[4] << " " << (int)arrayOfByte[5] << " " << (int)arrayOfByte[6] << " " << (int)arrayOfByte[7] << endl;		
 		for(unsigned long long int i = mylower; i < myupper && (found==0); ++i){
 			memcpy(arrayOfByte, &i, 8);
-			//Si encontro la llave imprimir la llave, el tiempo que se tardo y el nodo que lo encontro 
-			if(check_key(d, testString, arrayOfByte, iv)){
-				found = 15;
-				cout << "Found " << id << " " << (int)arrayOfByte[0] << (int)arrayOfByte[1] << (int)arrayOfByte[2] << (int)arrayOfByte[3] << (int)arrayOfByte[4] << (int)arrayOfByte[5] << (int)arrayOfByte[6] << (int)arrayOfByte[7] << endl;
+			// cout << "Checking inner " << id << " " << (int)arrayOfByte[0] << (int)arrayOfByte[1] << (int)arrayOfByte[2] << (int)arrayOfByte[3] << (int)arrayOfByte[4] << (int)arrayOfByte[5] << (int)arrayOfByte[6] << (int)arrayOfByte[7] << "\n";
+			if(check_key(d, cipher, arrayOfByte, iv)){
+				found = 1;
+				cout << "Found by " << id << " in the key " << (int)arrayOfByte[0] << (int)arrayOfByte[1] << (int)arrayOfByte[2] << (int)arrayOfByte[3] << (int)arrayOfByte[4] << (int)arrayOfByte[5] << (int)arrayOfByte[6] << (int)arrayOfByte[7] << endl;
+				cout << "El texto era: " << decode(d, testString, arrayOfByte, iv) << endl;
 				endTime = MPI_Wtime();
-				cout << "Took " << endTime-startTime << "seconds " << endl;
-				cout << "Node " << N << endl;
+				cout << "Took " << endTime-startTime << " seconds " << endl;
+				// cout << "Checking " << id << " " << (int)arrayOfByte[0] << (int)arrayOfByte[1] << (int)arrayOfByte[2] << (int)arrayOfByte[3] << (int)arrayOfByte[4] << (int)arrayOfByte[5] << (int)arrayOfByte[6] << (int)arrayOfByte[7] << "\n";
+				// cout << "Node " << N << endl;
 				for(int node=0; node<N; node++){
 					MPI_Send(&found, 1, MPI_LONG, node, 0, MPI_COMM_WORLD);
 				}
      			break;
+			}
+
+			MPI_Test(&req, &flag, &st);
+			if (found) {
+				break;
 			}
 		}
 		MPI_Finalize();
