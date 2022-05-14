@@ -71,7 +71,7 @@ int main(int argc, char* argv[])
 	string cipher, encoded, recovered;
 
 	string line;
-	ifstream myfile ("cipher_text-1.txt");
+	ifstream myfile ("test2.txt");
 	string cipherText;
 	if (myfile.is_open())
 	{
@@ -120,7 +120,7 @@ int main(int argc, char* argv[])
 			new StringSink(encoded)
 		) // HexEncoder
 	); // StringSource
-	cout << cipher << endl;
+	// cout << cipher << endl;
 	cout << encoded << endl;
 	string testString;
 	StringSource(cipherText, true, new HexDecoder(new StringSink(testString)));
@@ -165,10 +165,10 @@ int main(int argc, char* argv[])
 		for(unsigned long long int i = mylower; i < myupper && (found==0); ++i){
 			memcpy(arrayOfByte, &i, 8);
 			// cout << "Checking inner " << id << " " << (int)arrayOfByte[0] << (int)arrayOfByte[1] << (int)arrayOfByte[2] << (int)arrayOfByte[3] << (int)arrayOfByte[4] << (int)arrayOfByte[5] << (int)arrayOfByte[6] << (int)arrayOfByte[7] << "\n";
-			if(check_key(d, cipher, arrayOfByte, iv)){
+			if(check_key(d, testString, arrayOfByte, iv)){
 				found = 1;
 				cout << "Found by " << id << " in the key " << (int)arrayOfByte[0] << (int)arrayOfByte[1] << (int)arrayOfByte[2] << (int)arrayOfByte[3] << (int)arrayOfByte[4] << (int)arrayOfByte[5] << (int)arrayOfByte[6] << (int)arrayOfByte[7] << endl;
-				cout << "El texto era: " << decode(d, testString, arrayOfByte, iv) << endl;
+				cout << "The text was: " << decode(d, testString, arrayOfByte, iv) << endl;
 				endTime = MPI_Wtime();
 				cout << "Took " << endTime-startTime << " seconds " << endl;
 				// cout << "Checking " << id << " " << (int)arrayOfByte[0] << (int)arrayOfByte[1] << (int)arrayOfByte[2] << (int)arrayOfByte[3] << (int)arrayOfByte[4] << (int)arrayOfByte[5] << (int)arrayOfByte[6] << (int)arrayOfByte[7] << "\n";
